@@ -35,6 +35,7 @@
 #include "stm32f1xx_hal.h"
 
 /* USER CODE BEGIN Includes */
+#include <stdio.h>
 #include "oled.h"
 #include "key.h"
 /* USER CODE END Includes */
@@ -57,16 +58,22 @@ static void MX_GPIO_Init(void);
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
-const uint8_t Show[8][20] = {"200Hz", "400Hz", "800Hz", "1.6KHz", "3.2kHz", "6.4KHz", "12.8Hz", "25.6KHz"};
-const uint16_t Voltage[8] = {0x0001, 0x0002, 0x0004, 0x0008, 0x0010, 0x0020, 0x0040, 0x0080};
+
+//李齐   f(x) = 34.06*x - 8.321 都按下
+//孙晨   f(x) = 25.84*x + 5.761 都不按
+//王容   f(x) = 32.35*x - 11.72 别的
+//KEY0（C5）增加，KEY1(A15)减小
+uint8_t t=0;//用以获取键值
+uint8_t x = 0; //当前拨码开关值
+float y = 0; //频率值
+char fre[10];
 /* USER CODE END 0 */
 
 int main(void)
 {
 
     /* USER CODE BEGIN 1 */
-    uint8_t t;//用以获取键值
-    uint8_t cur = 0; //IO状态数组下标
+
     /* USER CODE END 1 */
 
     /* MCU Configuration----------------------------------------------------------*/
@@ -81,9 +88,12 @@ int main(void)
     MX_GPIO_Init();
 
     /* USER CODE BEGIN 2 */
+//  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3
+//                      | GPIO_PIN_4 | GPIO_PIN_5 | GPIO_PIN_6 | GPIO_PIN_7, GPIO_PIN_SET);
     OLED_Init();                    //初始化OLED
-    OLED_ShowString(0, 10, "Bluetooth Error", 24);
+    OLED_ShowString(0, 10, "123", 24);
     OLED_Refresh_Gram();//更新显示到OLED
+
     /* USER CODE END 2 */
 
     /* Infinite loop */
@@ -94,24 +104,74 @@ int main(void)
 
         /* USER CODE BEGIN 3 */
         t = KEY_Scan(0);        //得到键值
+
         switch (t)
         {
             case KEY0_PRES:
-                if ((cur < 7) && (cur > 0))
+                if ((HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_8) == RESET)
+                    && (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_9) == RESET)) //都按下  李齐
                 {
-                    cur++;
-                    GPIOB->ODR = Voltage[cur];
+                    if (x < 255)
+                    {
+                        x++;
+                        y = 34.06 * x - 8.321;
+                    }
+
                 }
-                OLED_ShowString(0, 10, Show[cur], 24);
+                else if ((HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_8) == SET)
+                         && (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_9) == SET)) //都不按 孙晨
+                {
+                    if (x < 255)
+                    {
+                        x++;
+                        y = 25.84 * x + 5.761;
+                    }
+                }
+                else//王容
+                {
+                    if (x < 255)
+                    {
+                        x++;
+                        y = 32.35 * x - 11.72;
+                    }
+                }
+               GPIOA->BSRR = (((uint32_t)(uint8_t)~(x))<<16)|((uint32_t)(uint8_t)(x));
+								
+                sprintf(fre, "%f", y);
+                OLED_ShowString(0, 10, fre, 24);
                 OLED_Refresh_Gram();//更新显示到OLED
                 break;
             case KEY1_PRES:
-                if ((cur < 7) && (cur > 0))
+                if ((HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_8) == RESET)
+                    && (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_9) == RESET)) //都按下 李齐
                 {
-                    cur--;
-                    GPIOB->ODR = Voltage[cur];
+                    if (x > 0)
+                    {
+                        x--;
+                        y = 34.06 * x - 8.321;
+                    }
+
                 }
-                OLED_ShowString(0, 10, Show[cur], 24);
+                else if ((HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_8) == SET)
+                         && (HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_9) == SET)) //都不按 孙晨
+                {
+                    if (x > 0)
+                    {
+                        x--;
+                        y = 25.84 * x + 5.761;
+                    }
+                }
+                else //王容
+                {
+                    if (x > 0)
+                    {
+                        x--;
+                        y = 32.35 * x - 11.72;
+                    }
+                }
+								GPIOA->BSRR = (((uint32_t)(uint8_t)~(x))<<16)|((uint32_t)(uint8_t)(x));
+                sprintf(fre, "%f", y);
+                OLED_ShowString(0, 10, fre, 24);
                 OLED_Refresh_Gram();//更新显示到OLED
                 break;
             default:
@@ -184,9 +244,13 @@ static void MX_GPIO_Init(void)
 
     /* GPIO Ports Clock Enable */
     __HAL_RCC_GPIOD_CLK_ENABLE();
+    __HAL_RCC_GPIOA_CLK_ENABLE();
     __HAL_RCC_GPIOC_CLK_ENABLE();
     __HAL_RCC_GPIOB_CLK_ENABLE();
-    __HAL_RCC_GPIOA_CLK_ENABLE();
+
+    /*Configure GPIO pin Output Level */
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3
+                      | GPIO_PIN_4 | GPIO_PIN_5 | GPIO_PIN_6 | GPIO_PIN_7, GPIO_PIN_RESET);
 
     /*Configure GPIO pin Output Level */
     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3
@@ -195,6 +259,14 @@ static void MX_GPIO_Init(void)
     /*Configure GPIO pin Output Level */
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_6 | GPIO_PIN_7 | GPIO_PIN_8 | GPIO_PIN_9,
                       GPIO_PIN_RESET);
+
+    /*Configure GPIO pins : PA0 PA1 PA2 PA3
+                             PA4 PA5 PA6 PA7 */
+    GPIO_InitStruct.Pin = GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3
+                          | GPIO_PIN_4 | GPIO_PIN_5 | GPIO_PIN_6 | GPIO_PIN_7;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
     /*Configure GPIO pin : KEY0_Pin */
     GPIO_InitStruct.Pin = KEY0_Pin;
@@ -216,11 +288,11 @@ static void MX_GPIO_Init(void)
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-    /*Configure GPIO pin : KEY1_Pin */
-    GPIO_InitStruct.Pin = KEY1_Pin;
+    /*Configure GPIO pins : PA8 PA9 KEY1_Pin */
+    GPIO_InitStruct.Pin = GPIO_PIN_8 | GPIO_PIN_9 | KEY1_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
     GPIO_InitStruct.Pull = GPIO_PULLUP;
-    HAL_GPIO_Init(KEY1_GPIO_Port, &GPIO_InitStruct);
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
 }
 

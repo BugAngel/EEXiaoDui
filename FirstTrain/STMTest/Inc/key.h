@@ -14,6 +14,7 @@
 
 #define KEY0  HAL_GPIO_ReadPin(GPIOC,GPIO_PIN_5)//读取按键0
 #define KEY1  HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_15)//读取按键1
+
  
 #define KEY0_PRES	1		//KEY0  
 #define KEY1_PRES	2		//KEY1 
