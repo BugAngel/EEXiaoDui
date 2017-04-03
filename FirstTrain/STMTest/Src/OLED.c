@@ -13,6 +13,20 @@
 
 uint8_t OLED_GRAM[128][8];
 
+void OLED_WriteChar(uint8_t dat)
+{
+	uint8_t i;
+
+    for (i = 0; i < 8; i++)
+    {
+        OLED_SCLK_0;
+        if (dat & 0x80)OLED_SDIN_1;
+        else OLED_SDIN_0;
+        OLED_SCLK_1;
+        dat <<= 1;
+    }
+}
+
 //更新显存到LCD
 void OLED_Refresh_Gram(void)
 {
@@ -25,13 +39,82 @@ void OLED_Refresh_Gram(void)
         for (n = 0; n < 128; n++)OLED_WR_Byte(OLED_GRAM[n][i], OLED_DATA);
     }
 }
+#if OLED_MODE==1
+/*****************************************************
+** name：IIC_Wait_Ack
+** brief：IIC通讯中的应答信号，无需判断应答，但要走应答步骤
+******************************************************/
+void IIC_Wait_Ack()
+{
+	OLED_SCLK_1;
+	OLED_SCLK_0;
+}
 
+/*****************************************************
+** name：IIC_Start
+** brief：IIC通讯中的开始信号
+******************************************************/
+void IIC_Start()
+{
+
+	OLED_SCLK_1;
+	OLED_SDIN_1;
+	OLED_SDIN_0;
+	OLED_SCLK_0;
+}
+
+/*****************************************************
+** name：IIC_Stop
+** brief：IIC通讯中的结束信号
+******************************************************/
+void IIC_Stop()
+{
+	OLED_SCLK_1;
+	OLED_SDIN_0;
+	OLED_SDIN_1;
+}
+
+/*****************************************************
+** name：IIC_WriteC
+** brief：向OLED写入一个命令
+******************************************************/
+void IIC_WriteC(uint8_t cmd)
+{
+	IIC_Start();							//开始传输
+	OLED_WriteChar(0x78);			//传输地址
+	IIC_Wait_Ack();							//接收1306返回的确认信号
+	OLED_WriteChar(0x00);			//发送控制字节
+	IIC_Wait_Ack();							//接收1306返回的确认信号
+	OLED_WriteChar(cmd);					//发送命令字节
+	IIC_Wait_Ack();							//接收1306返回的确认信号
+	IIC_Stop();							//结束传输
+	
+}
+
+/*****************************************************
+** name：IIC_WriteD
+** brief：向OLED写入一个数据
+** parameter：1.dat：需要写入的数据
+******************************************************/
+void IIC_WriteD(uint8_t dat)
+{
+	IIC_Start();							//开始传输
+	OLED_WriteChar(0x78);			//传输地址
+	IIC_Wait_Ack();							//接收1306返回的确认信号
+	OLED_WriteChar(0x40);			//发送控制字节
+	IIC_Wait_Ack();							//接收1306返回的确认信号
+	OLED_WriteChar(dat);					//发送数据字节
+	IIC_Wait_Ack();							//接收1306返回的确认信号
+	IIC_Stop();							//结束传输
+	
+}
+#endif
 //向SSD1306写入一个字节。
 //dat:要写入的数据/命令
 //cmd:数据/命令标志 0,表示命令;1,表示数据;
 void OLED_WR_Byte(uint8_t dat, uint8_t cmd)
 {
-    uint8_t i;
+#if OLED_MODE == 0
     if (cmd == 0)
     {
         OLED_DC_0;
@@ -42,16 +125,19 @@ void OLED_WR_Byte(uint8_t dat, uint8_t cmd)
     }
 
 //  OLED_CS=0;
-    for (i = 0; i < 8; i++)
-    {
-        OLED_SCLK_0;
-        if (dat & 0x80)OLED_SDIN_1;
-        else OLED_SDIN_0;
-        OLED_SCLK_1;
-        dat <<= 1;
-    }
+	OLED_WriteChar(dat);
 //  OLED_CS=1;
 //  OLED_RS=1;
+#else
+			if(cmd == 0)
+		{
+			IIC_WriteC(dat);
+		}
+		else
+		{
+			IIC_WriteD(dat);
+		}
+#endif
 }
 
 
@@ -238,10 +324,12 @@ void OLED_ShowString(uint8_t x, uint8_t y, const uint8_t *p, uint8_t size)
     }
 
 }
+
 //初始化SSD1306
 void OLED_Init(void)
 {
-
+#if OLED_MODE==0
+	
     OLED_SDIN_1;
     OLED_SCLK_1;
 
@@ -281,4 +369,66 @@ void OLED_Init(void)
                  OLED_CMD); //设置显示方式;bit0:1,反相显示;0,正常显示
     OLED_WR_Byte(0xAF, OLED_CMD); //开启显示
     OLED_Clear();
+#else 
+
+	/*关闭OLED显示*/
+	OLED_WR_Byte(0xAE,OLED_CMD);//关显示命令
+	
+	/*设置正当频率、时钟分频因子*/
+    OLED_WR_Byte(0xD5,OLED_CMD);//设置时钟分频因子、振荡频率
+    OLED_WR_Byte(0x80,OLED_CMD);
+		
+	/*设置驱动路数*/
+	OLED_WR_Byte(0xA8,OLED_CMD);			  //驱动路数设置命令
+	OLED_WR_Byte(0x1F,OLED_CMD);							  //驱动路数值
+
+	/*设置行显示偏移*/
+	OLED_WR_Byte(0xD3,OLED_CMD);				  //显示偏移设置命令
+	OLED_WR_Byte(0x00,OLED_CMD);							  //取值范围：0x00-->0x3F
+
+	/*设置显示起始行*/
+	OLED_WR_Byte(0x40,OLED_CMD);							  //取值范围：0x40---0x7F
+	
+	/*设置电荷泵*/
+	OLED_WR_Byte(0x8D,OLED_CMD); 				  //电荷泵设置命令
+	OLED_WR_Byte(0x14,OLED_CMD);							  //开启电荷泵
+
+	/*设置内存地址模式*/
+	OLED_WR_Byte(0x20,OLED_CMD);			  //内存地址模式设置命令
+	OLED_WR_Byte(0x10,OLED_CMD);							  //设置地址模式值：0x00,列地址模式；0x01,行地址模式；0x10，页地址模式；
+															  
+	/*设置列地址映射*/										  
+	OLED_WR_Byte(0xA1,OLED_CMD); 			  //列地址0映射到SEG127
+
+	/*设置行地址映射*/
+	OLED_WR_Byte(0xC8,OLED_CMD); 		  //行地址0映射到COM63 //扫描方向从COM[N-1]-->COM0
+	
+	/*设置COM硬件引脚配置*/									  
+	OLED_WR_Byte(0xDA,OLED_CMD); 			  //设置COM硬件引脚配置命令
+	OLED_WR_Byte(0x00,OLED_CMD); 
+
+	/*对比度设置*/
+	OLED_WR_Byte(0x81,OLED_CMD); 			   //对比度设置命令
+	OLED_WR_Byte(0x8F,OLED_CMD); 							   //对比度值，取值范围1-255
+	
+	/*设置预充电周期*/
+	OLED_WR_Byte(0xD9,OLED_CMD); 
+	OLED_WR_Byte(0xF1,OLED_CMD); 
+	
+	/*设置VCOMH电源倍率*/
+	OLED_WR_Byte(0xDB,OLED_CMD); 
+	OLED_WR_Byte(0x30,OLED_CMD);
+
+	/*关闭全局显示*/
+    OLED_WR_Byte(0xA4,OLED_CMD); 
+
+	/*设置OLED点亮方式  A6正常，A7背光*/
+	OLED_WR_Byte(0xA6,OLED_CMD); 	 				//0：熄灭像素；1：点亮像素
+
+	/*打开OLED显示*/
+	OLED_WR_Byte(0xAF,OLED_CMD); 
+	
+	/*清屏操作*/
+	OLED_Clear();
+#endif
 }
