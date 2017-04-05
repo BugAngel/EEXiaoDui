@@ -13,19 +13,7 @@
 
 uint8_t OLED_GRAM[128][8];
 
-void OLED_WriteChar(uint8_t dat)
-{
-	uint8_t i;
 
-    for (i = 0; i < 8; i++)
-    {
-        OLED_SCLK_0;
-        if (dat & 0x80)OLED_SDIN_1;
-        else OLED_SDIN_0;
-        OLED_SCLK_1;
-        dat <<= 1;
-    }
-}
 
 //更新显存到LCD
 void OLED_Refresh_Gram(void)
@@ -39,15 +27,42 @@ void OLED_Refresh_Gram(void)
         for (n = 0; n < 128; n++)OLED_WR_Byte(OLED_GRAM[n][i], OLED_DATA);
     }
 }
-#if OLED_MODE==1
+#if OLED_MODE==0
+void OLED_WriteChar(uint8_t dat)
+{
+	uint8_t i;
+
+    for (i = 0; i < 8; i++)
+    {
+        OLED_SCLK=0;
+        if (dat & 0x80)OLED_SDIN=1;
+        else OLED_SDIN=0;
+        OLED_SCLK=1;
+        dat <<= 1;
+    }
+}
+#else
+void IIC_WriteChar(uint8_t byte)
+{
+	uint8_t i,temp;
+	OLED_SCLK = 0;
+	temp = byte;
+	for(i = 0;i<8;i++)
+	{
+		OLED_SDIN = (temp&0x80)>>7;
+		OLED_SCLK = 1;
+		OLED_SCLK = 0;
+		temp = temp<<1;	
+	}
+}
 /*****************************************************
 ** name：IIC_Wait_Ack
 ** brief：IIC通讯中的应答信号，无需判断应答，但要走应答步骤
 ******************************************************/
 void IIC_Wait_Ack()
 {
-	OLED_SCLK_1;
-	OLED_SCLK_0;
+	OLED_SCLK=1;
+	OLED_SCLK=0;
 }
 
 /*****************************************************
@@ -57,10 +72,10 @@ void IIC_Wait_Ack()
 void IIC_Start()
 {
 
-	OLED_SCLK_1;
-	OLED_SDIN_1;
-	OLED_SDIN_0;
-	OLED_SCLK_0;
+	OLED_SCLK=1;
+	OLED_SDIN=1;
+	OLED_SDIN=0;
+	OLED_SCLK=0;
 }
 
 /*****************************************************
@@ -69,9 +84,9 @@ void IIC_Start()
 ******************************************************/
 void IIC_Stop()
 {
-	OLED_SCLK_1;
-	OLED_SDIN_0;
-	OLED_SDIN_1;
+	OLED_SCLK=1;
+	OLED_SDIN=0;
+	OLED_SDIN=1;
 }
 
 /*****************************************************
@@ -81,11 +96,11 @@ void IIC_Stop()
 void IIC_WriteC(uint8_t cmd)
 {
 	IIC_Start();							//开始传输
-	OLED_WriteChar(0x78);			//传输地址
+	IIC_WriteChar(0x78);			//传输地址
 	IIC_Wait_Ack();							//接收1306返回的确认信号
-	OLED_WriteChar(0x00);			//发送控制字节
+	IIC_WriteChar(0x00);			//发送控制字节
 	IIC_Wait_Ack();							//接收1306返回的确认信号
-	OLED_WriteChar(cmd);					//发送命令字节
+	IIC_WriteChar(cmd);					//发送命令字节
 	IIC_Wait_Ack();							//接收1306返回的确认信号
 	IIC_Stop();							//结束传输
 	
@@ -99,15 +114,16 @@ void IIC_WriteC(uint8_t cmd)
 void IIC_WriteD(uint8_t dat)
 {
 	IIC_Start();							//开始传输
-	OLED_WriteChar(0x78);			//传输地址
+	IIC_WriteChar(0x78);			//传输地址
 	IIC_Wait_Ack();							//接收1306返回的确认信号
-	OLED_WriteChar(0x40);			//发送控制字节
+	IIC_WriteChar(0x40);			//发送控制字节
 	IIC_Wait_Ack();							//接收1306返回的确认信号
-	OLED_WriteChar(dat);					//发送数据字节
+	IIC_WriteChar(dat);					//发送数据字节
 	IIC_Wait_Ack();							//接收1306返回的确认信号
 	IIC_Stop();							//结束传输
 	
 }
+
 #endif
 //向SSD1306写入一个字节。
 //dat:要写入的数据/命令

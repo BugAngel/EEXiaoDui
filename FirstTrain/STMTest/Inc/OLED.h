@@ -11,12 +11,13 @@
 #define __OLED_H
 
 #include "stm32f1xx_hal.h"			
+#include "sys.h"
 
 //OLED模式设置
 //0:SPI通讯
 //1:IIC通讯
 //HAL库IIC模式调不出来
-#define OLED_MODE 0
+#define OLED_MODE 1
 
 //-----------------OLED端口定义----------------  		
 #define OLED_RST_1  HAL_GPIO_WritePin(GPIOC,GPIO_PIN_9,GPIO_PIN_SET)
@@ -31,6 +32,9 @@
 
 #define OLED_SDIN_1   HAL_GPIO_WritePin(GPIOC,GPIO_PIN_6,GPIO_PIN_SET) //D1
 #define OLED_SDIN_0   HAL_GPIO_WritePin(GPIOC,GPIO_PIN_6,GPIO_PIN_RESET)
+
+#define OLED_SCLK PCout(7)
+#define OLED_SDIN PCout(6)
 
 #define OLED_CMD  	0		//写命令
 #define OLED_DATA 	1		//写数据
