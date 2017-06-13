@@ -15,7 +15,7 @@ void PID_init(PidTypeDef *pid,float Kp,float Ki,float Kd)
 float PID_PositionRealize(PidTypeDef *pid,float speed,int16_t ActualSpeed)
 {
     pid->SetSpeed=speed;
-	  pid->ActualSpeed=ActualSpeed;
+    pid->ActualSpeed=ActualSpeed;
     pid->err=pid->SetSpeed-pid->ActualSpeed;
     pid->integral+=pid->err;
     pid->output=pid->Kp*pid->err+pid->Ki*pid->integral+pid->Kd*(pid->err-pid->err_next);
@@ -26,7 +26,7 @@ float PID_PositionRealize(PidTypeDef *pid,float speed,int16_t ActualSpeed)
 float PID_IncermentRealize(PidTypeDef *pid,float speed,int16_t ActualSpeed)
 {
     pid->SetSpeed=speed;
-	  pid->ActualSpeed=ActualSpeed;
+    pid->ActualSpeed=ActualSpeed;
     pid->err=pid->SetSpeed-pid->ActualSpeed;
     float  incrementSpeed=pid->Kp*(pid->err-pid->err_next)+pid->Ki*pid->err+pid->Kd*(pid->err-2*pid->err_next+pid->err_last);
     pid->output+=incrementSpeed;

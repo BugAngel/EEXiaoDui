@@ -10,7 +10,7 @@ typedef struct
     float err_last;            //定义最上前的偏差值
     float Kp,Ki,Kd;            //定义比例、积分、微分系数
     float integral;            //定义积分值
-	  uint32_t output;
+    int output;
 }PidTypeDef;
 
 void PID_init(PidTypeDef *pid,float Kp,float Ki,float Kd);
