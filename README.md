@@ -6,3 +6,5 @@ FirstTrain是第一次训练题目。单片机实现的是按键控制八个IO�
 SecondTrain是第二次训练题目。超声波二文件夹里是US100超声波的控制程序。DaoLiBai文件夹里是倒立摆的控制程序。
 
 第三次和第四次没做出什么有价值的东西。
+
+FifthTrain SPI协议的WIFI模块发送JPEG图像，以正点原子的F4探索者摄像头实验为基础，添加M8266WIFI文件夹，替换HARDWARE文件夹，USER文件夹里将.c与.h文件替换，在编译时加上这些并在FWIB文件夹里加上SPI的库函数就行了。
